@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote Karakter Studio Ghibli</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #74b9ff, #a29bfe);
+            color: #333;
+            min-height: 100vh;
+        }
+        header {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .characters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .character-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .character-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .character-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .character-info {
+            padding: 15px;
+            text-align: center;
+        }
+        .character-info h3 {
+            margin: 0 0 10px;
+        }
+        .vote-btn {
+            background: #ff7675;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .vote-btn:hover {
+            background: #e17055;
+        }
+        .vote-count {
+            font-weight: bold;
+            color: #0984e3;
+            margin-top: 10px;
+        }
+        .leaderboard {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .leaderboard h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .leader-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .leader-item:last-child {
+            border-bottom: none;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        .modal-content button {
+            margin: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .confirm-btn {
+            background: #00b894;
+            color: white;
+        }
+        .cancel-btn {
+            background: #d63031;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Vote Karakter Favorit Studio Ghibli</h1>
+        <p>Pilih karakter anime Studio Ghibli favoritmu dan lihat rankingnya!</p>
+    </header>
+    <div class="container">
+        <div class="characters" id="characters">
+            <!-- Karakter akan di-generate oleh JS -->
+        </div>
+        <div class="leaderboard">
+            <h2>Leaderboard</h2>
+            <div id="leaderboard-list">
+                <!-- Leaderboard akan di-update oleh JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi -->
+    <div id="vote-modal" class="modal">
+        <div class="modal-content">
+            <h3>Konfirmasi Vote</h3>
+            <p>Apakah Anda yakin ingin vote untuk <span id="modal-character"></span>?</p>
+            <button class="confirm-btn" id="confirm-vote">Ya</button>
+            <button class="cancel-btn" id="cancel-vote">Tidak</button>
+        </div>
+    </div>
+
+    <script>
+        // Data Karakter Studio Ghibli (hanya 4 karakter)
+        const characters = [
+            { name: "Totoro", img: "https://i.pinimg.com/736x/a5/fc/1d/a5fc1d625026d8d9a5052920d030cfd0.jpg", desc: "Makhluk misterius dari My Neighbor Totoro.", votes: 0 },
+            { name: "No-Face", img: "https://i.pinimg.com/1200x/5f/15/2b/5f152baae4ff250626ae66091cdb1abb.jpg", desc: "Roh tanpa wajah dari Spirited Away.", votes: 0 },
+            { name: "Howl", img: "https://i.pinimg.com/736x/be/40/17/be40179e3b5aedba042552fd5fc48d1e.jpg", desc: "Penyihir dari Howl's Moving Castle.", votes: 0 },
+            { name: "Ponyo", img: "https://i.pinimg.com/736x/e0/3c/0d/e03c0db60d35380156db2e3225d314c7.jpg", desc: "Ikan ajaib dari Ponyo.", votes: 0 }
+        ];
+
+        // Load votes dari localStorage
+        function loadVotes() {
+            const storedVotes = JSON.parse(localStorage.getItem('ghibliVotes')) || {};
+            characters.forEach(char => {
+                char.votes = storedVotes[char.name] || 0;
+            });
+        }
+
+        // Save votes ke localStorage
+        function saveVotes() {
+            const votes = {};
+            characters.forEach(char => votes[char.name] = char.votes);
+            localStorage.setItem('ghibliVotes', JSON.stringify(votes));
+        }
+
+        // Render karakter
+        function renderCharacters() {
+            const container = document.getElementById('characters');
+            container.innerHTML = '';
+            characters.forEach((char, index) => {
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                card.innerHTML = `
+                    <img src="${char.img}" alt="${char.name}" onerror="this.src='https://via.placeholder.com/250x200?text=Image+Error'">
+                    <div class="character-info">
+                        <h3>${char.name}</h3>
+                        <p>${char.desc}</p>
+                        <button class="vote-btn" data-index="${index}">Vote</button>
+                        <div class="vote-count">Votes: ${char.votes}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Render leaderboard
+        function renderLeaderboard() {
+            const list = document.getElementById('leaderboard-list');
+            const sorted = [...characters].sort((a, b) => b.votes - a.votes);
+            list.innerHTML = '';
+            sorted.forEach(char => {
+                const item = document.createElement('div');
+                item.className = 'leader-item';
+                item.innerHTML = `<span>${char.name}</span><span>${char.votes} votes</span>`;
+                list.appendChild(item);
+            });
+        }
+
+        // Modal logic
+        let currentVoteIndex = null;
+        const modal = document.getElementById('vote-modal');
+        const modalCharacter = document.getElementById('modal-character');
+        const confirmBtn = document.getElementById('confirm-vote');
+        const cancelBtn = document.getElementById('cancel-vote');
+
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('vote-btn')) {
+                currentVoteIndex = e.target.dataset.index;
+                modalCharacter.textContent = characters[currentVoteIndex].name;
+                modal.style.display = 'flex';
+            }
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            characters[currentVoteIndex].votes++;
+            saveVotes();
+            renderCharacters();
+            renderLeaderboard();
+            modal.style.display = 'none';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Inisialisasi
+        loadVotes();
+        renderCharacters();
+        renderLeaderboard();
+    </script>
+</body>
+</html>
